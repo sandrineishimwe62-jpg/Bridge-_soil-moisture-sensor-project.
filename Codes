@@ -1,0 +1,73 @@
+
+// ================================================
+//  Soil Moisture Monitor
+//  Components: soil sensor, potentiometer, LDR,
+//              green LED, red LED, buzzer, 9V battery
+// ================================================
+
+// --- Pin definitions ---
+const int SOIL_PIN  = A0;  // soil moisture sensor analog out
+const int POT_PIN   = A1;  // potentiometer (sets dry threshold)
+const int LDR_PIN   = A3;  // LDR (light sensor)
+const int GREEN_LED = 8;   // green LED — soil is moist
+const int RED_LED   = 9;   // red LED   — soil is dry
+const int BUZZER    = 10;  // buzzer    — dry alert
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED,   OUTPUT);
+  pinMode(BUZZER,    OUTPUT);
+
+  // Start with everything off
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED,   LOW);
+  noTone(BUZZER);
+}
+
+void loop() {
+
+  // --- Read sensors ---
+  int soilRaw   = analogRead(SOIL_PIN);  // 0=very wet, 1023=very dry
+  int potRaw    = analogRead(POT_PIN);   // 0–1023 from potentiometer
+  int lightRaw  = analogRead(LDR_PIN);   // 0=dark, 1023=bright
+
+  // Convert to 0–100% for easier reading
+  int moisturePct  = map(soilRaw,  1023, 0, 0, 100);
+  int thresholdPct = map(potRaw,   0, 1023, 0, 100);
+  int lightPct     = map(lightRaw, 0, 1023, 0, 100);
+
+  // --- Decide if soil is dry ---
+  bool isDry = moisturePct < thresholdPct;
+
+  // --- Control LEDs ---
+  if (isDry) {
+    digitalWrite(GREEN_LED, LOW);   // green OFF
+    digitalWrite(RED_LED,   HIGH);  // red ON
+  } else {
+    digitalWrite(GREEN_LED, HIGH);  // green ON
+    digitalWrite(RED_LED,   LOW);   // red OFF
+  }
+
+  // --- Control buzzer ---
+  // Only beeps when dry AND there is enough light
+  // (LDR keeps it silent at night to save battery)
+  if (isDry && lightPct > 30) {
+    tone(BUZZER, 1000, 500);  // 1kHz beep for 500ms
+  } else {
+    noTone(BUZZER);            // silence
+  }
+
+  // --- Serial monitor output (for testing) ---
+  Serial.print("Moisture: ");
+  Serial.print(moisturePct);
+  Serial.print("%  |  Threshold: ");
+  Serial.print(thresholdPct);
+  Serial.print("%  |  Light: ");
+  Serial.print(lightPct);
+  Serial.print("%  |  Status: ");
+  Serial.println(isDry ? "DRY - water needed!" : "OK");
+
+  delay(1000);  // wait 1 second between readings
+}
+Show quoted text
